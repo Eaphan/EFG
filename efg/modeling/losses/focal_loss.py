@@ -28,6 +28,8 @@ def sigmoid_focal_loss(
     Returns:
         Loss tensor with the reduction option applied.
     """
+    logits = logits.float()
+    targets = targets.float()
     p = torch.sigmoid(logits)
     ce_loss = F.binary_cross_entropy_with_logits(logits, targets, reduction="none")
     p_t = p * targets + (1 - p) * (1 - targets)

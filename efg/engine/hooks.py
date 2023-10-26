@@ -69,7 +69,9 @@ class Optimization(HookBase):
         losses = self.trainer.outputs["losses"]
 
         self.trainer.optimizer.zero_grad()
-        losses.backward()
+        # losses.backward()
+        self.trainer.scaler.scale(losses).backward()
+        self.trainer.scaler.unscale_(self.trainer.optimizer)
 
         if self.clip:
             if self.clip_type == "norm":
@@ -78,7 +80,9 @@ class Optimization(HookBase):
             elif self.clip_type == "value":
                 clip_grad_value(self.trainer.model.parameters(), **self.clip_params)
 
-        self.trainer.optimizer.step()
+        # self.trainer.optimizer.step()
+        self.trainer.scaler.step(self.trainer.optimizer)
+        self.trainer.scaler.update()
 
 
 class LRScheduler(HookBase):
