@@ -122,7 +122,7 @@ class TrainerBase:
                 storage.put_scalar(k, v)
 
             # average the rest metrics
-            metrics_dict = {k: np.mean([x[k] for x in all_metrics_dict]) for k in all_metrics_dict[0].keys()}
+            metrics_dict = {k: np.mean([x[k] for x in all_metrics_dict if k in x]) for k in all_metrics_dict[0].keys()}
             total_losses_reduced = sum(loss for key, loss in metrics_dict.items() if "loss" in key)
             storage.put_scalar("{}total_loss".format(prefix), total_losses_reduced)
             if len(metrics_dict) > 1:
@@ -275,6 +275,11 @@ class DefaultTrainer(TrainerBase):
         self.register_hooks(hooks)
         logger.info(f"Finish hooks setup: {hooks}")
 
+    def before_train(self):
+        for h in self._hooks:
+            h.before_train()
+        self.scaler = torch.cuda.amp.GradScaler(enabled=True, init_scale=2.0**16)
+
     def step(self):
         start = time.perf_counter()
 
@@ -294,7 +299,8 @@ class DefaultTrainer(TrainerBase):
         """
         If you want to do something with the losses, you can wrap the model.
         """
-        loss_dict = self.model(data)
+        with torch.cuda.amp.autocast():
+            loss_dict = self.model(data)
         loss_dict = dict(sorted(loss_dict.items()))
         losses = sum([metrics_value for metrics_value in loss_dict.values() if metrics_value.requires_grad])
         self.outputs = {
