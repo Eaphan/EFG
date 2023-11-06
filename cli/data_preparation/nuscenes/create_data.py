@@ -154,6 +154,7 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10)
 
         sample_data_token = sample["data"][chan]
         curr_sd_rec = nusc.get("sample_data", sample_data_token)
+        curr_sample_rec = nusc.get("sample", sample["prev"]) if sample["prev"]!="" else None
         sweeps = []
         while len(sweeps) < nsweeps - 1:
             if curr_sd_rec["prev"] == "":
@@ -196,6 +197,50 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10)
                     "car_from_current": car_from_current,
                     "time_lag": time_lag,
                 }
+
+                if (not test) and curr_sample_rec is not None and (curr_sample_rec['data'][chan] == curr_sd_rec["token"]):
+                    # curr_sd_token = curr_sample_rec["data"][ref_chan]
+                    # curr_sd_rec = nusc.get("sample_data", curr_sd_token)
+                    curr_lidar_path, curr_boxes, _ = get_sample_data(nusc, curr_sd_rec["token"])
+
+                    annotations = [nusc.get("sample_annotation", token) for token in curr_sample_rec["anns"]]
+                    # transformation
+                    # # raw annotations in nuScenes LIDAR_TOP coordinates
+                    locs = np.array([b.center for b in curr_boxes]).reshape(-1, 3)  # x, y, z
+                    dims = np.array([b.wlh for b in curr_boxes]).reshape(-1, 3)[:, [1, 0, 2]]  # w, l, h
+                    velocity = np.array([b.velocity for b in curr_boxes]).reshape(-1, 3)  # vx, vy, vz
+                    rots = np.array([quaternion_yaw(b.orientation) for b in curr_boxes]).reshape(-1, 1)  # yaw
+                    names = np.array([b.name for b in curr_boxes])
+                    tokens = np.array([b.token for b in curr_boxes])
+                    sweep_gt_boxes = np.nan_to_num(np.concatenate([locs, dims, velocity[:, :2], rots], axis=1))
+
+                    # import pdb;pdb.set_trace()
+                    mask = np.array(
+                        [(anno["num_lidar_pts"] + anno["num_radar_pts"]) > 0 for anno in annotations],
+                        dtype=bool,
+                    ).reshape(-1)
+
+                    num_sweep_gt = sweep_gt_boxes.shape[0]
+                    # sweep_gt_boxes = sweep_gt_boxes.T # after this: (9, num_boxes)
+                    locs = tm.dot(np.vstack((locs.T, np.ones(num_sweep_gt))))[:3, :].T # (N,3)
+
+                    # convert from nuScenes Lidar to waymo Lidar
+                    # rot = Quaternion(axis=[0, 0, 1], degrees=-90)
+                    # [rb.rotate(rot) for rb in sweep_gt_boxes]
+                    locs = locs[:, [1, 0, 2]]  # 交换 x 和 y
+                    locs[:, 1] = -locs[:, 1]  # 反转 y 坐标
+                    rots = rots + np.pi / 2
+                    rots = (rots + np.pi) % (2 * np.pi) - np.pi
+                    sweep_gt_boxes = np.concatenate([locs, dims, velocity[:, :2], rots], axis=1)
+
+                    sweep_gt_boxes = sweep_gt_boxes[mask].astype(np.float32)
+                    sweep_annos_dict = {}
+                    sweep_annos_dict["gt_boxes"] = sweep_gt_boxes.astype(np.float32)
+                    sweep_annos_dict["gt_names"] = np.array([general_to_detection[name] for name in names])[mask]
+                    sweep_annos_dict["gt_boxes_token"] = tokens[mask]
+                    sweep["annotations"] = sweep_annos_dict
+
+                    curr_sample_rec = nusc.get("sample", curr_sample_rec["prev"]) if curr_sample_rec["prev"]!="" else None
                 sweeps.append(sweep)
 
         info["sweeps"] = sweeps
@@ -447,5 +492,5 @@ if __name__ == "__main__":
 
     info_path = os.path.join(args.root_path, f"infos_train_{args.nsweeps:02d}sweeps_withvelo_new.pkl")
 
-    if args.version == "v1.0-trainval":
-        create_groundtruth_database(args.root_path, info_path=info_path, nsweeps=args.nsweeps)
+    # if args.version == "v1.0-trainval":
+    #     create_groundtruth_database(args.root_path, info_path=info_path, nsweeps=args.nsweeps)

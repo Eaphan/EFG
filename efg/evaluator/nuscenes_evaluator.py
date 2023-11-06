@@ -60,22 +60,26 @@ def _lidar_nusc_box_to_global(nusc, boxes, sample_token):
 
 
 def _efg_det_to_nusc_box(detection):
-    box3d = detection["box3d_lidar"].detach().cpu().numpy()
+    if "box3d_lidar" in detection:
+        box3d = detection["box3d_lidar"].detach().cpu().numpy()
+        labels = detection["label_preds"].detach().cpu().numpy()
+    else:
+        box3d = detection["boxes3d"].numpy()
+        labels = detection["labels"].numpy()
     scores = detection["scores"].detach().cpu().numpy()
-    labels = detection["label_preds"].detach().cpu().numpy()
 
     box_list = []
     rot = Quaternion(axis=[0, 0, 1], degrees=90)
     for i in range(box3d.shape[0]):
         quat = Quaternion(axis=[0, 0, 1], radians=box3d[i, -1])
-        velocity = (*box3d[i, 6:8], 0.0)
+        # velocity = (*box3d[i, 6:8], 0.0)
         box = Box(
             box3d[i, :3],
             box3d[i, [4, 3, 5]],
             quat,
             label=labels[i],
             score=scores[i],
-            velocity=velocity,
+            # velocity=velocity,
         )
         box.rotate(rot)
         box_list.append(box)

@@ -138,11 +138,18 @@ class nuScenesDetectionDataset(BaseDataset):
             nsweeps, len(info["sweeps"])
         )
 
+        
+        read_lidar_path = lidar_path
         for i in range(nsweeps - 1):
             sweep = info["sweeps"][i]
             if sweep["lidar_path"].startswith("datasets/nuscenes"):
                 slidar_path = os.path.join(os.environ["EFG_PATH"], sweep["lidar_path"])
-            sweep["lidar_path"] = slidar_path
+
+            if slidar_path==read_lidar_path:
+                break
+            else:
+                sweep["lidar_path"] = slidar_path
+                read_lidar_path = slidar_path
 
             points_sweep, times_sweep = read_sweep(sweep)
             if points_sweep is None or times_sweep is None:
@@ -195,9 +202,24 @@ class nuScenesDetectionDataset(BaseDataset):
         keep = (target["gt_names"][:, None] == self.class_names).any(axis=1)
         _dict_select(target, keep)
 
+        for i in range(self.meta["nsweeps"] - 1):
+            if 'annotations' in info["sweeps"][i]:
+                target = info["sweeps"][i]['annotations']
+                keep = (target["gt_names"][:, None] == self.class_names).any(axis=1)
+                _dict_select(target, keep)
+
+
     def _add_class_labels_to_annos(self, info):
         info["annotations"]["labels"] = (
             np.array([self.class_names.index(name) + 1 for name in info["annotations"]["gt_names"]])
             .astype(np.int64)
             .reshape(-1)
         )
+
+        for i in range(self.meta["nsweeps"] - 1):
+            if 'annotations' in info["sweeps"][i]:
+                info["sweeps"][i]['annotations']['labels'] = (
+                    np.array([self.class_names.index(name) + 1 for name in info["sweeps"][i]['annotations']["gt_names"]])
+                    .astype(np.int64)
+                    .reshape(-1)
+                )
