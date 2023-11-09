@@ -372,6 +372,8 @@ def create_groundtruth_database(
         lidar_path = info["lidar_path"]
 
         points = read_file(str(lidar_path))
+        read_lidar_path_set = []
+        read_lidar_path_set.append(str(lidar_path))
 
         # points[:, 3] /= 255
         sweep_points_list = [points]
@@ -382,6 +384,9 @@ def create_groundtruth_database(
         )
 
         for i in range(nsweeps - 1):
+            if info["sweeps"][i]["lidar_path"] in read_lidar_path_set:
+                break
+            read_lidar_path_set.append(info["sweeps"][i]["lidar_path"])
             points_sweep, times_sweep = read_sweep(info["sweeps"][i])
             if points_sweep is None or times_sweep is None:
                 continue
@@ -488,9 +493,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    create_nuscenes_infos(args.root_path, args.version, args.nsweeps)
+    # create_nuscenes_infos(args.root_path, args.version, args.nsweeps)
 
     info_path = os.path.join(args.root_path, f"infos_train_{args.nsweeps:02d}sweeps_withvelo_new.pkl")
 
-    # if args.version == "v1.0-trainval":
-    #     create_groundtruth_database(args.root_path, info_path=info_path, nsweeps=args.nsweeps)
+    if args.version == "v1.0-trainval":
+        create_groundtruth_database(args.root_path, info_path=info_path, nsweeps=args.nsweeps)
