@@ -187,6 +187,28 @@ class nuScenesDetectionDataset(BaseDataset):
                 "tokens": info.pop("gt_boxes_token")[mask],
             }
 
+            for i in range(nsweeps - 1):
+                sweep = info["sweeps"][i]
+                if 'annotation' in sweep:
+                    mask = drop_arrays_by_name(
+                        sweep["annotations"]["gt_names"],
+                        [
+                            "ignore",
+                        ],
+                    )
+                    # info["sweeps"][10]['annotations']['gt_names']
+                    info["sweeps"][i]["annotations"] = {
+                        "gt_boxes": sweep["annotations"].pop("gt_boxes")[mask],
+                        "gt_names": sweep["annotations"].pop("gt_names")[mask],
+                        "tokens": sweep["annotations"].pop("gt_boxes_token")[mask],
+                    }
+
+        # print("########### before trans", np.isnan(info["annotations"]['gt_boxes']).any())
+        # for i in range(30):
+        #     sweep = info["sweeps"][i]
+        #     if 'annotations' in sweep:
+        #         print("### sweep", i, np.isnan(sweep['annotations']['gt_boxes']).any())       
+                     
         info["root_path"] = self.root_path
 
         points, info = self._apply_transforms(points, info)
