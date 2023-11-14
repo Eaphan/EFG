@@ -189,7 +189,7 @@ class nuScenesDetectionDataset(BaseDataset):
 
             for i in range(nsweeps - 1):
                 sweep = info["sweeps"][i]
-                if 'annotation' in sweep:
+                if 'annotations' in sweep:
                     mask = drop_arrays_by_name(
                         sweep["annotations"]["gt_names"],
                         [
@@ -197,11 +197,12 @@ class nuScenesDetectionDataset(BaseDataset):
                         ],
                     )
                     # info["sweeps"][10]['annotations']['gt_names']
-                    info["sweeps"][i]["annotations"] = {
+                    annotations = {
                         "gt_boxes": sweep["annotations"].pop("gt_boxes")[mask],
                         "gt_names": sweep["annotations"].pop("gt_names")[mask],
-                        "tokens": sweep["annotations"].pop("gt_boxes_token")[mask],
+                        # "tokens": sweep["annotations"].pop("gt_boxes_token")[mask],
                     }
+                    info["sweeps"][i]["annotations"] = annotations
 
         # print("########### before trans", np.isnan(info["annotations"]['gt_boxes']).any())
         # for i in range(30):

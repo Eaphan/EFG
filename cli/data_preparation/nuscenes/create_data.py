@@ -229,7 +229,7 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10)
                     # [rb.rotate(rot) for rb in sweep_gt_boxes]
                     locs = locs[:, [1, 0, 2]]  # 交换 x 和 y
                     locs[:, 1] = -locs[:, 1]  # 反转 y 坐标
-                    rots = rots + np.pi / 2
+                    rots = rots - np.pi / 2
                     rots = (rots + np.pi) % (2 * np.pi) - np.pi
                     sweep_gt_boxes = np.concatenate([locs, dims, velocity[:, :2], rots], axis=1)
 
@@ -493,7 +493,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # create_nuscenes_infos(args.root_path, args.version, args.nsweeps)
+    create_nuscenes_infos(args.root_path, args.version, args.nsweeps)
 
     info_path = os.path.join(args.root_path, f"infos_train_{args.nsweeps:02d}sweeps_withvelo_new.pkl")
 
