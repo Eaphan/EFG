@@ -32,7 +32,7 @@ def eval_main(nusc, eval_version, res_path, eval_set, output_dir):
         output_dir=output_dir,
         verbose=True,
     )
-    metrics_summary = nusc_eval.main(plot_examples=0)
+    metrics_summary = nusc_eval.main(plot_examples=0, render_curves=False)
     return metrics_summary
 
 
@@ -72,14 +72,14 @@ def _efg_det_to_nusc_box(detection):
     rot = Quaternion(axis=[0, 0, 1], degrees=90)
     for i in range(box3d.shape[0]):
         quat = Quaternion(axis=[0, 0, 1], radians=box3d[i, -1])
-        # velocity = (*box3d[i, 6:8], 0.0)
+        velocity = (*box3d[i, 6:8], 0.0)
         box = Box(
             box3d[i, :3],
             box3d[i, [4, 3, 5]],
             quat,
             label=labels[i],
             score=scores[i],
-            # velocity=velocity,
+            velocity=velocity,
         )
         box.rotate(rot)
         box_list.append(box)
